@@ -89,9 +89,7 @@ object Arrow {
         case Sequence(s1, s2) => f(s1, s2.thenArrow(a2), acc)
         case _ => a2 match {
           case Sequence(s1, s2) =>
-            val x = a1.mapK(nt)
-            val y = acc.thenArrow(x)
-            f(s1, s2, y)
+            f(s1, s2, acc.thenArrow(a1.mapK(nt)))
           case _ =>
             acc.thenArrow(a1.mapK(nt)).thenArrow(a2.mapK(nt))
         }
