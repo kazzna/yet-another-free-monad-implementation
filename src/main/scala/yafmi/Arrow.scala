@@ -9,7 +9,7 @@ sealed trait Arrow[A, F[_], B] {
 
   def run(fa: F[A])(implicit F: Monad[F]): F[B]
 
-  def transform[G[_]](nt: F ~> G): Arrow[A, G, B]
+  def mapK[G[_]](nt: F ~> G): Arrow[A, G, B]
 }
 
 object Arrow {
@@ -19,7 +19,7 @@ object Arrow {
 
     override def run(fa: F[A])(implicit F: Monad[F]): F[A] = fa
 
-    override def transform[G[_]](nt: F ~> G): Arrow[A, G, A] = Identity()
+    override def mapK[G[_]](nt: F ~> G): Arrow[A, G, A] = Identity()
   }
 
   final case class Apply[A, F[_], B](f: Free[F, A => B]) extends Arrow[A, F, B] {
@@ -30,7 +30,7 @@ object Arrow {
       case Free.Impure(fi, arrow) => F.ap(fa)(arrow.run(fi))
     }
 
-    override def transform[G[_]](nt: F ~> G): Arrow[A, G, B] = Apply(f.transform(nt))
+    override def mapK[G[_]](nt: F ~> G): Arrow[A, G, B] = Apply(f.mapK(nt))
   }
 
   final case class Bind[A, F[_], B](f: A => Free[F, B]) extends Arrow[A, F, B] {
@@ -39,7 +39,7 @@ object Arrow {
     override def run(fa: F[A])(implicit F: Monad[F]): F[B] =
       F.bind(fa)(f.andThen(_.run))
 
-    override def transform[G[_]](nt: F ~> G): Arrow[A, G, B] = BindThenTransform(f, nt)
+    override def mapK[G[_]](nt: F ~> G): Arrow[A, G, B] = BindThenTransform(f, nt)
   }
 
   final case class BindThenTransform[A, F[_], G[_], B](f: A => Free[F, B], nt: F ~> G) extends Arrow[A, G, B] {
@@ -48,7 +48,7 @@ object Arrow {
     override def run(fa: G[A])(implicit F: Monad[G]): G[B] =
       F.bind(fa)(f.andThen(free => free.runAs(nt)))
 
-    override def transform[H[_]](nt2: G ~> H): Arrow[A, H, B] = BindThenTransform(f, nt.andThen(nt2))
+    override def mapK[H[_]](nt2: G ~> H): Arrow[A, H, B] = BindThenTransform(f, nt.andThen(nt2))
   }
 
   final case class Sequence[A, X, F[_], B](first: Arrow[A, F, X], last: Arrow[X, F, B]) extends Arrow[A, F, B] {
@@ -83,25 +83,25 @@ object Arrow {
       f(fa, first.prepared, last.prepared)
     }
 
-    override def transform[G[_]](nt: F ~> G): Arrow[A, G, B] = {
+    override def mapK[G[_]](nt: F ~> G): Arrow[A, G, B] = {
       @scala.annotation.tailrec
       def f[P, Q, R, S](a1: Arrow[Q, F, R], a2: Arrow[R, F, S], acc: Arrow[P, G, Q]): Arrow[P, G, S] = a1 match {
         case Sequence(s1, s2) => f(s1, s2.thenArrow(a2), acc)
         case _ => a2 match {
           case Sequence(s1, s2) =>
-            val x = a1.transform(nt)
+            val x = a1.mapK(nt)
             val y = acc.thenArrow(x)
             f(s1, s2, y)
           case _ =>
-            acc.thenArrow(a1.transform(nt)).thenArrow(a2.transform(nt))
+            acc.thenArrow(a1.mapK(nt)).thenArrow(a2.mapK(nt))
         }
       }
 
       first.prepared match {
-        case Sequence(s1, s2) => f(s2, last, s1.transform(nt))
+        case Sequence(s1, s2) => f(s2, last, s1.mapK(nt))
         case _ => last.prepared match {
-          case Sequence(s1, s2) => f(s1, s2, first.transform(nt))
-          case _ => first.transform(nt).thenArrow(last.transform(nt))
+          case Sequence(s1, s2) => f(s1, s2, first.mapK(nt))
+          case _ => first.mapK(nt).thenArrow(last.mapK(nt))
         }
       }
     }

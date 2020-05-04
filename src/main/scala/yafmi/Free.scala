@@ -20,11 +20,11 @@ sealed trait Free[F[_], A] {
     case Free.Impure(fi, arrow) => arrow.run(fi)
   }
 
-  def runAs[G[_]: Monad](nt: F ~> G): G[A] = transform(nt).run
+  def runAs[G[_]: Monad](nt: F ~> G): G[A] = mapK(nt).run
 
-  def transform[G[_]](nt: F ~> G): Free[G, A] = this match {
+  def mapK[G[_]](nt: F ~> G): Free[G, A] = this match {
     case Free.Pure(a) => Free.pure(a)
-    case Free.Impure(fi, arrow) => Free.Impure(nt(fi), arrow.transform(nt))
+    case Free.Impure(fi, arrow) => Free.Impure(nt(fi), arrow.mapK(nt))
   }
 }
 
