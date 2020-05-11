@@ -13,15 +13,6 @@ sealed trait Arrow[A, F[_], B] {
 }
 
 object Arrow {
-
-  final case class Identity[F[_], A]() extends Arrow[A, F, A] {
-    override def prepared: Arrow[A, F, A] = this
-
-    override def run(fa: F[A])(implicit F: Monad[F]): F[A] = fa
-
-    override def mapK[G[_]](nt: F ~> G): Arrow[A, G, A] = Identity()
-  }
-
   final case class Apply[A, F[_], B](f: Free[F, A => B]) extends Arrow[A, F, B] {
     override def prepared: Arrow[A, F, B] = this
 
@@ -108,6 +99,4 @@ object Arrow {
   def applied[A, F[_], B](f: Free[F, A => B]): Arrow[A, F, B] = Apply(f)
 
   def bind[A, F[_], B](f: A => Free[F, B]): Arrow[A, F, B] = Bind(f)
-
-  def identity[F[_], A]: Arrow[A, F, A] = Identity()
 }

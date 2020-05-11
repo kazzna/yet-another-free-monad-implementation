@@ -35,5 +35,5 @@ object Free {
   def pure[F[_], A](a: A): Free[F, A] = Pure(a)
   def point[F[_], A](a: A): Free[F, A] = Pure(a)
 
-  def liftF[F[_], A](fa: F[A]): Free[F, A] = Impure(fa, Arrow.identity)
+  def liftF[F[_], A](fa: F[A]): Free[F, A] = Impure(fa, Arrow.bind(pure))
 }
