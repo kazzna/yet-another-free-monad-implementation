@@ -43,7 +43,7 @@ object Arrow {
   }
 
   final case class BindThenTransform[A, F[_], G[_], B](f: A => Free[F, B], nt: F ~> G) extends Arrow[A, G, B] {
-    override protected def prepared: Arrow[A, G, B] = ???
+    override protected def prepared: Arrow[A, G, B] = this
 
     override def run(fa: G[A])(implicit F: Monad[G]): G[B] =
       F.bind(fa)(f.andThen(free => free.runAs(nt)))
